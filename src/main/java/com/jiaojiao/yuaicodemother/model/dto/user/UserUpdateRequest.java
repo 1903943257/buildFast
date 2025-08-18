@@ -1,17 +1,14 @@
-package com.jiaojiao.yuaicodemother.model.dto;
+package com.jiaojiao.yuaicodemother.model.dto.user;
 
-import com.jiaojiao.yuaicodemother.common.PageRequest;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 
 /**
- * 用户查询请求
+ * 用户更新请求
  */
-@EqualsAndHashCode(callSuper = true)
 @Data
-public class UserQueryRequest extends PageRequest implements Serializable {
+public class UserUpdateRequest implements Serializable {
 
     /**
      * id
@@ -24,9 +21,9 @@ public class UserQueryRequest extends PageRequest implements Serializable {
     private String userName;
 
     /**
-     * 账号
+     * 用户头像
      */
-    private String userAccount;
+    private String userAvatar;
 
     /**
      * 简介
@@ -34,7 +31,7 @@ public class UserQueryRequest extends PageRequest implements Serializable {
     private String userProfile;
 
     /**
-     * 用户角色：user/admin/ban
+     * 用户角色：user/admin
      */
     private String userRole;
 

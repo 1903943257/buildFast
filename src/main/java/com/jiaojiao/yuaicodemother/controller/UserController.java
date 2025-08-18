@@ -9,7 +9,7 @@ import com.jiaojiao.yuaicodemother.constant.UserConstant;
 import com.jiaojiao.yuaicodemother.exception.BusinessException;
 import com.jiaojiao.yuaicodemother.exception.ErrorCode;
 import com.jiaojiao.yuaicodemother.exception.ThrowUtils;
-import com.jiaojiao.yuaicodemother.model.dto.*;
+import com.jiaojiao.yuaicodemother.model.dto.user.*;
 import com.jiaojiao.yuaicodemother.model.vo.LoginUserVO;
 import com.jiaojiao.yuaicodemother.model.vo.UserVO;
 import com.mybatisflex.core.paginate.Page;
