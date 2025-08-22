@@ -2,21 +2,39 @@ package com.jiaojiao.yuaicodemother.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
+import com.jiaojiao.yuaicodemother.constant.AppConstant;
+import com.jiaojiao.yuaicodemother.core.AiCodeGeneratorFacade;
+import com.jiaojiao.yuaicodemother.core.parser.CodeParseExecutor;
+import com.jiaojiao.yuaicodemother.core.saver.CodeFileSaverExecutor;
 import com.jiaojiao.yuaicodemother.exception.BusinessException;
 import com.jiaojiao.yuaicodemother.exception.ErrorCode;
+import com.jiaojiao.yuaicodemother.exception.ThrowUtils;
 import com.jiaojiao.yuaicodemother.mapper.UserMapper;
 import com.jiaojiao.yuaicodemother.model.dto.app.AppQueryRequest;
 import com.jiaojiao.yuaicodemother.model.entity.User;
+import com.jiaojiao.yuaicodemother.model.enums.ChatHistoryMessageTypeEnum;
+import com.jiaojiao.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.yuaicodemother.model.vo.AppVO;
 import com.jiaojiao.yuaicodemother.model.vo.UserVO;
+import com.jiaojiao.yuaicodemother.service.ChatHistoryService;
 import com.jiaojiao.yuaicodemother.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.jiaojiao.yuaicodemother.model.entity.App;
 import com.jiaojiao.yuaicodemother.service.AppService;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
+import java.io.File;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +48,103 @@ import java.util.stream.Collectors;
  */
 @Service
 public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  implements AppService{
+    private static final Logger log = LoggerFactory.getLogger(AppServiceImpl.class);
     @Resource
     private UserService userService;
+
+    @Resource
+    private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+    @Autowired
+    private ChatHistoryService chatHistoryService;
+
+    @Override
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+        // 1. 参数校验
+        ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "提示词不能为空");
+        // 2. 查询应用信息
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
+        // 3. 权限校验（仅本人可以和自己的应用对话）
+        if(!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权访问该应用");
+        }
+
+        // 4. 获取应用的代码生成类型
+        String codeGenType = app.getCodeGenType();
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if (codeGenTypeEnum == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用代码生成类型错误");
+        }
+        // 5. 在调用AI前，先保存用户消息到数据库中
+        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        // 6. 调用AI生成代码(流式)
+        Flux<String> contentFlux = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 7. 收集AI响应的内容， 并且在完成后保存记录到对话历史
+        // 字符串拼接器，用于当流式返回所有代码后，再保存代码
+        StringBuilder aiResponseBuilder = new StringBuilder();
+        return contentFlux.map(chunk -> {
+            // 实时收集代码片段
+            aiResponseBuilder.append(chunk);
+            return chunk;
+        }).doOnComplete(() -> {
+            //  流式返回完成后，保存AI消息到对话历史中
+            String aiResponse = aiResponseBuilder.toString();
+            chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        }).doOnError(error -> {
+            // 即使回复失败，也保存记录到数据库中
+            String errorMessage = "AI回复失败"  +error.getMessage();
+            chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        });
+    }
+
+    @Override
+    public String deployApp(Long appId, User loginUser) {
+        // 1. 参数校验
+        ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR,"应用ID错误");
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        // 2. 查询应用信息
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3. 权限校验
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限部署该应用");
+        }
+        // 4. 检查是否已有deploy
+        String deployKey = app.getDeployKey();
+        // 如果没有，生成6为deployKey（6位字母加数字）
+        if (StrUtil.isBlank(deployKey)) {
+            deployKey = RandomUtil.randomString(6);
+        }
+        // 5. 获取代码生成类型， 获取原始代码生成路径(应用访问目录)
+        String codeGenType = app.getCodeGenType();
+        String sourceDirName = codeGenType + "_" + appId;
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
+        // 6. 检查路径是否合法
+        File sourceDir = new File(sourceDirPath);
+        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码路径不存在，请先生成应用");
+        }
+        // 7. 复制文件到部署目录
+        String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR+ File.separator + deployKey;
+        try{
+            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+        }catch (Exception e){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用部署失败" + e.getMessage());
+        }
+        // 8. 更新数据库
+        App updateApp = new App();
+        updateApp.setId(appId);
+        updateApp.setDeployKey(deployKey);
+        updateApp.setDeployedTime(LocalDateTime.now());
+        boolean updateResult = this.updateById(updateApp);
+        ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
+
+        // 9. 返回可访问的URL地址
+        return String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
+    }
+
     @Override
     public AppVO getAppVO(App app) {
         if (app == null) {
@@ -68,7 +181,6 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         }).collect(Collectors.toList());
     }
 
-
     @Override
     public QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest) {
         if (appQueryRequest == null) {
@@ -96,5 +208,27 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
                 .orderBy(sortField, "ascend".equals(sortOrder));
     }
 
-
+    /**
+     * 删除应用时关联删除对话历史
+     * @param id
+     * @return
+     */
+    @Override
+    public boolean removeById(Serializable id){
+        if (id == null) {
+            return false;
+        }
+        long appId = Long.parseLong(id.toString());
+        if (appId <= 0) {
+            return false;
+        }
+        // 先删除关联对话历史
+        try {
+            chatHistoryService.deleteByAppId(appId);
+        } catch (Exception e) {
+            log.error("删除相关应用关联的对话历史失败：{}", e.getMessage());
+        }
+        // 删除应用
+        return super.removeById(id);
+    }
 }
