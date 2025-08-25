@@ -7,10 +7,12 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.jiaojiao.yuaicodemother.constant.AppConstant;
 import com.jiaojiao.yuaicodemother.core.AiCodeGeneratorFacade;
+import com.jiaojiao.yuaicodemother.core.builder.VueProjectBuilder;
 import com.jiaojiao.yuaicodemother.core.handler.StreamHandlerExecutor;
 import com.jiaojiao.yuaicodemother.exception.BusinessException;
 import com.jiaojiao.yuaicodemother.exception.ErrorCode;
 import com.jiaojiao.yuaicodemother.exception.ThrowUtils;
+import com.jiaojiao.yuaicodemother.manager.CosManager;
 import com.jiaojiao.yuaicodemother.mapper.UserMapper;
 import com.jiaojiao.yuaicodemother.model.dto.app.AppQueryRequest;
 import com.jiaojiao.yuaicodemother.model.entity.User;
@@ -19,6 +21,7 @@ import com.jiaojiao.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.yuaicodemother.model.vo.AppVO;
 import com.jiaojiao.yuaicodemother.model.vo.UserVO;
 import com.jiaojiao.yuaicodemother.service.ChatHistoryService;
+import com.jiaojiao.yuaicodemother.service.ScreenshotService;
 import com.jiaojiao.yuaicodemother.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -52,6 +55,12 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
     private UserService userService;
 
     @Resource
+    private CosManager cosManager;
+
+    @Resource
+    private ScreenshotService screenshotService;
+
+    @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
 
     @Autowired
@@ -59,6 +68,9 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
+
+    @Autowired
+    private VueProjectBuilder vueProjectBuilder;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -103,7 +115,7 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         }
         // 4. 检查是否已有deploy
         String deployKey = app.getDeployKey();
-        // 如果没有，生成6为deployKey（6位字母加数字）
+        // 如果没有，生成6位deployKey（6位字母加数字）
         if (StrUtil.isBlank(deployKey)) {
             deployKey = RandomUtil.randomString(6);
         }
@@ -116,14 +128,25 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         if (!sourceDir.exists() || !sourceDir.isDirectory()) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码路径不存在，请先生成应用");
         }
-        // 7. 复制文件到部署目录
+        // 7. Vue项目特殊处理：执行构建
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT){
+            // Vue项目需要构建
+            boolean buildSuccess = vueProjectBuilder.buildProject(sourceDirPath);
+            ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "Vue项目构建失败");
+            // 检查dist目录是否存在
+            File distDir = new File(sourceDirPath, "dist");
+            ThrowUtils.throwIf(!distDir.exists(), ErrorCode.SYSTEM_ERROR, "Vue项目构建完成，但是dist目录不存在");
+            sourceDir = distDir;
+        }
+        // 8. 复制文件到部署目录
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR+ File.separator + deployKey;
         try{
             FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
         }catch (Exception e){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用部署失败" + e.getMessage());
         }
-        // 8. 更新数据库
+        // 9. 更新数据库
         App updateApp = new App();
         updateApp.setId(appId);
         updateApp.setDeployKey(deployKey);
@@ -131,8 +154,30 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
 
-        // 9. 返回可访问的URL地址
-        return String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 10. 得到可访问的URL地址
+        String appDeployUrl = String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 11. 异步执行截图服务并更新应用封面
+        generateAppScreenshotAsync(appId, appDeployUrl);
+        return appDeployUrl;
+    }
+
+    /**
+     * 异步生成应用截图并更新封面
+     * @param appId 应用id
+     * @param appDeployUrl 部署地址
+     */
+    @Override
+    public void generateAppScreenshotAsync(Long appId, String appDeployUrl) {
+        Thread.startVirtualThread(() -> {
+            // 调用截图服务并上传
+            String screenshotUrl = screenshotService.generateAndUploadScreenshot(appDeployUrl);
+            // 更新数据库封面
+            App updateApp = new App();
+            updateApp.setId(appId);
+            updateApp.setCover(screenshotUrl);
+            boolean updated = this.updateById(updateApp);
+            ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "更新应用封面字段失败");
+        });
     }
 
     @Override
