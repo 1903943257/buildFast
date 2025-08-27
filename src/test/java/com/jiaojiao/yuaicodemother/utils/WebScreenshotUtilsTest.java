@@ -12,7 +12,7 @@ public class WebScreenshotUtilsTest {
 
     @Test
     void saveWebPageScreenshot() {
-        String testUrl = "https://www.xiaohongshu.com/";
+        String testUrl = "https://www.codefather.cn/course/1948291549923344386/section/1953297401593405442?contentType=text&tabKey=list&type=#heading-7";
         String webPageScreenshot = WebScreenshotUtils.saveWebPageScreenshot(testUrl);
         Assertions.assertNotNull(webPageScreenshot);
     }

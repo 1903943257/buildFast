@@ -2,7 +2,7 @@ package com.jiaojiao.yuaicodemother.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.jiaojiao.yuaicodemother.ai.tools.FileWriteTool;
+import com.jiaojiao.yuaicodemother.ai.tools.*;
 import com.jiaojiao.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.yuaicodemother.service.ChatHistoryService;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
@@ -43,6 +43,8 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * AI 服务实例缓存
@@ -59,6 +61,7 @@ public class AiCodeGeneratorServiceFactory {
                 log.debug("AI 服务实例被移除，缓存键: {}, 原因: {}", key, cause);
             })
             .build();
+
 
     /**
      * 根据 appId 获取服务（带缓存）这个方法是为了兼容历史逻辑
@@ -101,7 +104,10 @@ public class AiCodeGeneratorServiceFactory {
                     .chatModel(chatModel)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(new FileWriteTool())
+                    .tools(
+                            toolManager.getAllTools()
+                    )
+
                     // 处理工具调用幻觉问题
                     .hallucinatedToolNameStrategy(toolExecutionRequest ->
                             ToolExecutionResultMessage.from(toolExecutionRequest,
