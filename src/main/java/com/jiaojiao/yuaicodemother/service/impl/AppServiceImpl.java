@@ -6,6 +6,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.jiaojiao.yuaicodemother.ai.AiCodeGenTypeRoutingService;
+import com.jiaojiao.yuaicodemother.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.jiaojiao.yuaicodemother.constant.AppConstant;
 import com.jiaojiao.yuaicodemother.core.AiCodeGeneratorFacade;
 import com.jiaojiao.yuaicodemother.core.builder.VueProjectBuilder;
@@ -17,18 +18,18 @@ import com.jiaojiao.yuaicodemother.manager.CosManager;
 import com.jiaojiao.yuaicodemother.mapper.UserMapper;
 import com.jiaojiao.yuaicodemother.model.dto.app.AppAddRequest;
 import com.jiaojiao.yuaicodemother.model.dto.app.AppQueryRequest;
+import com.jiaojiao.yuaicodemother.model.entity.App;
 import com.jiaojiao.yuaicodemother.model.entity.User;
 import com.jiaojiao.yuaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.jiaojiao.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.yuaicodemother.model.vo.AppVO;
 import com.jiaojiao.yuaicodemother.model.vo.UserVO;
+import com.jiaojiao.yuaicodemother.service.AppService;
 import com.jiaojiao.yuaicodemother.service.ChatHistoryService;
 import com.jiaojiao.yuaicodemother.service.ScreenshotService;
 import com.jiaojiao.yuaicodemother.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.jiaojiao.yuaicodemother.model.entity.App;
-import com.jiaojiao.yuaicodemother.service.AppService;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
     private VueProjectBuilder vueProjectBuilder;
 
     @Resource
-    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+    private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -117,6 +118,7 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         // 应用名称暂时为 initPrompt 前 12 位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         // 使用 AI 智能选择代码生成类型
+        AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
         CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(selectedCodeGenType.getValue());
         // 插入数据库

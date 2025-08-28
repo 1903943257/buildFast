@@ -1,27 +1,22 @@
 package com.jiaojiao.yuaicodemother.controller;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
-import com.jiaojiao.yuaicodemother.ai.AiCodeGenTypeRoutingService;
-import com.jiaojiao.yuaicodemother.annotation.AuthCheck;
-import com.jiaojiao.yuaicodemother.constant.AppConstant;
-import com.jiaojiao.yuaicodemother.model.dto.app.AppAdminUpdateRequest;
-import com.jiaojiao.yuaicodemother.model.dto.app.AppQueryRequest;
-import com.jiaojiao.yuaicodemother.model.dto.app.AppDeployRequest;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
+import com.jiaojiao.yuaicodemother.annotation.AuthCheck;
 import com.jiaojiao.yuaicodemother.common.BaseResponse;
 import com.jiaojiao.yuaicodemother.common.DeleteRequest;
 import com.jiaojiao.yuaicodemother.common.ResultUtils;
+import com.jiaojiao.yuaicodemother.constant.AppConstant;
 import com.jiaojiao.yuaicodemother.constant.UserConstant;
 import com.jiaojiao.yuaicodemother.exception.BusinessException;
 import com.jiaojiao.yuaicodemother.exception.ErrorCode;
 import com.jiaojiao.yuaicodemother.exception.ThrowUtils;
-import com.jiaojiao.yuaicodemother.model.dto.app.AppAddRequest;
-import com.jiaojiao.yuaicodemother.model.dto.app.AppUpdateRequest;
+import com.jiaojiao.yuaicodemother.model.dto.app.*;
+import com.jiaojiao.yuaicodemother.model.entity.App;
 import com.jiaojiao.yuaicodemother.model.entity.User;
-import com.jiaojiao.yuaicodemother.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.yuaicodemother.model.vo.AppVO;
+import com.jiaojiao.yuaicodemother.service.AppService;
 import com.jiaojiao.yuaicodemother.service.ProjectDownloadService;
 import com.jiaojiao.yuaicodemother.service.UserService;
 import com.mybatisflex.core.paginate.Page;
@@ -32,8 +27,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import com.jiaojiao.yuaicodemother.model.entity.App;
-import com.jiaojiao.yuaicodemother.service.AppService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -60,8 +53,8 @@ public class AppController {
     @Resource
     private ProjectDownloadService projectDownloadService;
 
-    @Resource
-    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+//    @Resource
+//    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     @GetMapping(value = "chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
