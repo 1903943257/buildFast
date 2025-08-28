@@ -8,6 +8,8 @@ import com.jiaojiao.yuaicodemother.ai.model.MultiFileCodeResult;
 import com.jiaojiao.yuaicodemother.ai.model.message.AiResponseMessage;
 import com.jiaojiao.yuaicodemother.ai.model.message.ToolExecutedMessage;
 import com.jiaojiao.yuaicodemother.ai.model.message.ToolRequestMessage;
+import com.jiaojiao.yuaicodemother.constant.AppConstant;
+import com.jiaojiao.yuaicodemother.core.builder.VueProjectBuilder;
 import com.jiaojiao.yuaicodemother.core.parser.CodeParseExecutor;
 import com.jiaojiao.yuaicodemother.core.saver.CodeFileSaverExecutor;
 import com.jiaojiao.yuaicodemother.exception.BusinessException;
@@ -32,6 +34,9 @@ public class AiCodeGeneratorFacade {
 
     @Resource
     private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
+
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 统一入口：生成并保存代码
@@ -83,7 +88,7 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield  processTokenStream(tokenStream);
+                yield  processTokenStream(tokenStream, appId);
             }
             default -> {
                 String errorMessage = "不支持的生成类型:" + codeGenTypeEnum.getValue();
@@ -98,7 +103,7 @@ public class AiCodeGeneratorFacade {
      * @param tokenStream TokenStream 对象
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
         return Flux.create(sink -> {
             tokenStream.onPartialResponse((String partialResponse) -> {
                         AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
@@ -113,6 +118,9 @@ public class AiCodeGeneratorFacade {
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
                     })
                     .onCompleteResponse((ChatResponse response) -> {
+                        // 同步构建Vue项目
+                        String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
+                        vueProjectBuilder.buildProject(projectPath);
                         sink.complete();
                     })
                     .onError((Throwable error) -> {
