@@ -189,10 +189,19 @@ onMounted(() => {
           type="default"
           @click="
             setPrompt(
+              '创建一个简单的个人博客网站，总代码行数不超过50行。',
+            )
+          "
+        >简易博客</a-button
+        >
+        <a-button
+        type="default"
+        @click="
+            setPrompt(
               '创建一个现代化的个人博客网站，包含文章列表、详情页、分类标签、搜索功能、评论系统和个人简介页面。采用简洁的设计风格，支持响应式布局，文章支持Markdown格式，首页展示最新文章和热门推荐。',
             )
           "
-          >个人博客网站</a-button
+        >个人博客网站</a-button
         >
         <a-button
           type="default"

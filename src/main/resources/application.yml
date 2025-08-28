@@ -21,6 +21,7 @@ spring:
       port: 6379
       ttl: 3600 # 缓存过期时间
       database: 0
+      password: ""
 
 
 server:

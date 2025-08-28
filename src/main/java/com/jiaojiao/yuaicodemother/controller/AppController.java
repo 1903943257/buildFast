@@ -16,6 +16,8 @@ import com.jiaojiao.yuaicodemother.model.dto.app.*;
 import com.jiaojiao.yuaicodemother.model.entity.App;
 import com.jiaojiao.yuaicodemother.model.entity.User;
 import com.jiaojiao.yuaicodemother.model.vo.AppVO;
+import com.jiaojiao.yuaicodemother.ratelimter.annotation.RateLimit;
+import com.jiaojiao.yuaicodemother.ratelimter.enums.RateLimitType;
 import com.jiaojiao.yuaicodemother.service.AppService;
 import com.jiaojiao.yuaicodemother.service.ProjectDownloadService;
 import com.jiaojiao.yuaicodemother.service.UserService;
@@ -55,6 +57,7 @@ public class AppController {
     private ProjectDownloadService projectDownloadService;
 
     @GetMapping(value = "chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60)
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
         // 参数校验
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用id错误");
