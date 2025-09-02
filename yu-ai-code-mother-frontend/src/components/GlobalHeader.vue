@@ -20,6 +20,7 @@
         />
       </a-col>
       <!-- 右侧：用户操作区域 -->
+
       <a-col>
         <div class="user-login-status">
           <div v-if="loginUserStore.loginUser.id">
@@ -30,6 +31,10 @@
               </a-space>
               <template #overlay>
                 <a-menu>
+                  <a-menu-item @click="goToProfile">
+                    <UserOutlined />
+                    个人中心
+                  </a-menu-item>
                   <a-menu-item @click="doLogout">
                     <LogoutOutlined />
                     退出登录
@@ -53,7 +58,8 @@ import { useRouter } from 'vue-router'
 import { type MenuProps, message } from 'ant-design-vue'
 import { useLoginUserStore } from '@/stores/loginUser.ts'
 import { userLogout } from '@/api/userController.ts'
-import { LogoutOutlined, HomeOutlined } from '@ant-design/icons-vue'
+import { LogoutOutlined, HomeOutlined, UserOutlined } from '@ant-design/icons-vue'
+
 
 const loginUserStore = useLoginUserStore()
 const router = useRouter()
@@ -84,8 +90,8 @@ const originItems = [
   },
   {
     key: 'others',
-    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
-    title: '编程导航',
+    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '快速上手'),
+    title: '快速上手',
   },
 ]
 
@@ -128,6 +134,12 @@ const doLogout = async () => {
   } else {
     message.error('退出登录失败，' + res.data.message)
   }
+}
+
+// 个人中心跳转
+const goToProfile = () => {
+  // 路由路径需与 router/index.ts 中 UserProfile 路由的 path 完全一致
+  router.push('/user/profile')
 }
 </script>
 
