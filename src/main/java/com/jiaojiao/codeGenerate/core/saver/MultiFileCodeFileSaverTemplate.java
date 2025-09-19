@@ -9,7 +9,7 @@ import com.jiaojiao.codeGenerate.model.enums.CodeGenTypeEnum;
 /**
  * 多文件代码保存器
  *
- * @author yupi
+ * @author jiaojiao
  */
 public class MultiFileCodeFileSaverTemplate extends CodeFileSaverTemplate<MultiFileCodeResult> {
 

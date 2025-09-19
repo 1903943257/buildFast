@@ -45,7 +45,7 @@ public class MyBatisCodeGenerator {
 
         //设置根包,先放到临时目录里，在移动到对应目录
         globalConfig.getPackageConfig()
-                .setBasePackage("com.jiaojiao.yuaicodemother.genresult");
+                .setBasePackage("com.jiaojiao.codeGenerate.genresult");
 
         //设置表前缀和只生成哪些表，setGenerateTable 未配置时，生成所有表
         globalConfig.getStrategyConfig()

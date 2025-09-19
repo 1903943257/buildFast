@@ -3,7 +3,7 @@ package com.jiaojiao.codeGenerate.core.parser;
 /**
  * 代码解析器策略接口
  * 
- * @author yupi
+ * @author jiaojiao
  */
 public interface CodeParser<T> {
 

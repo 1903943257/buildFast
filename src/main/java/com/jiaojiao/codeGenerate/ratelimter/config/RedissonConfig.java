@@ -37,6 +37,9 @@ public class RedissonConfig {
                 .setTimeout(3000)
                 .setRetryAttempts(3)
                 .setRetryInterval(1500);
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            singleServerConfig.setPassword(redisPassword);
+        }
 
         return Redisson.create(config);
     }

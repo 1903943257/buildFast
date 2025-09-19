@@ -1,6 +1,6 @@
 spring:
   application:
-    name: yu-ai-code-mother-backend
+    name: ai-code-generator
   # session 配置
   session:
     store-type: redis
@@ -23,7 +23,6 @@ spring:
       database: 0
       password: ""
 
-
 server:
   port: 8123
   servlet:
@@ -38,10 +37,27 @@ springdoc:
   group-configs:
     - group: 'default'
       paths-to-match: '/**'
-      packages-to-scan: com.jiaojiao.yuaicodemother.controller
+      packages-to-scan: com.jiaojiao.codeGenerate.controller
 
 # knife4j
 knife4j:
   enable: true
   setting:
     language: zh_cn
+
+logging:
+  level:
+    # 打印 MyBatis-Flex 的 SQL 日志（包含执行时间）
+    com.mybatisflex.core: DEBUG
+    # 打印 Mapper 接口的日志（可选）
+    com.example.mapper: DEBUG
+
+# 监控
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

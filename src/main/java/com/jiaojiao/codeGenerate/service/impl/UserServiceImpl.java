@@ -147,7 +147,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
     /**
      * 获取登录用户视图(脱敏)
      * @param user 用户信息
-     * @return
+     * @return  用户视图
      */
     @Override
     public UserVO getUserVO(User user) {
@@ -158,10 +158,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
         BeanUtil.copyProperties(user, userVO);
         return userVO;
     }
+
     /**
      * 获取登录用户列表(脱敏)
      * @param userList 用户信息
-     * @return
+     * @return  用户视图列表
      */
     @Override
     public List<UserVO> getUserVOList(List<User> userList) {
@@ -226,6 +227,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
         return true;
     }
 
+    /**
+     * 根据查询条件查询参数
+     * @param userQueryRequest 查询参数
+     * @return 查询参数
+     */
     @Override
     public QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest) {
         if (userQueryRequest == null) {
@@ -257,6 +263,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
     public String getEncryptPassword(String userPassword) {
         // 盐值，混淆空间
         final String SALT = "yupi";
+        // MD5加密
         return DigestUtils.md5DigestAsHex((userPassword + SALT).getBytes(StandardCharsets.UTF_8));
     }
 }

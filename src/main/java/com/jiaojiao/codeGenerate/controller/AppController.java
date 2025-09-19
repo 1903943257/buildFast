@@ -56,6 +56,14 @@ public class AppController {
     @Resource
     private ProjectDownloadService projectDownloadService;
 
+    /**
+     * 应用对话生成代码
+     *
+     * @param appId   应用ID
+     * @param message 提示词
+     * @param request 请求
+     * @return 代码
+     */
     @GetMapping(value = "chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60)
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {

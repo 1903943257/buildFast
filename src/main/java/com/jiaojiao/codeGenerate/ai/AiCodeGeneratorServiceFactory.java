@@ -111,7 +111,7 @@ public class AiCodeGeneratorServiceFactory {
                             ToolExecutionResultMessage.from(toolExecutionRequest,
                                     "Error: there is no tool called" + toolExecutionRequest.name())
                     )
-                    .maxSequentialToolsInvocations(20) // 最多连续调用20次工具
+                    .maxSequentialToolsInvocations(50) // 最多连续调用50次工具
                     .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
 //                    .outputGuardrails(new RetryOutputGuardrail())  // 添加输出护轨
                     .build();
@@ -131,8 +131,8 @@ public class AiCodeGeneratorServiceFactory {
 
     /**
      * 构建缓存键
-     * @param appId
-     * @param codeGenType
+     * @param appId 应用id
+     * @param codeGenType 代码生成类型
      */
     private String buildCacheKey(long appId, CodeGenTypeEnum codeGenType) {
         return appId + "_" + codeGenType.getValue();

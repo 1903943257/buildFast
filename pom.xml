@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.jiaojiao</groupId>
-    <artifactId>yu-ai-code-mother</artifactId>
+    <artifactId>ai-code-generator</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>yu-ai-code-mother</name>
     <description>yu-ai-code-mother</description>
@@ -148,6 +148,16 @@
             <artifactId>redisson</artifactId>
             <version>3.50.0</version>
         </dependency>
+<!--        监控-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
 
 
         <dependency>
@@ -186,13 +196,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>1.18.36</version>
-                        </exclude>
-                    </excludes>
+
                 </configuration>
             </plugin>
         </plugins>

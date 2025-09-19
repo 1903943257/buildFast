@@ -3,6 +3,7 @@ package com.jiaojiao.codeGenerate.langgraph4j;
 import cn.hutool.json.JSONUtil;
 import com.jiaojiao.codeGenerate.exception.BusinessException;
 import com.jiaojiao.codeGenerate.exception.ErrorCode;
+import com.jiaojiao.codeGenerate.langgraph4j.model.QualityResult;
 import com.jiaojiao.codeGenerate.langgraph4j.node.*;
 import com.jiaojiao.codeGenerate.langgraph4j.state.WorkflowContext;
 import com.jiaojiao.codeGenerate.model.enums.CodeGenTypeEnum;
@@ -35,6 +36,7 @@ public class CodeGenWorkflow {
                     .addNode("prompt_enhancer", PromptEnhancerNode.create())
                     .addNode("router", RouterNode.create())
                     .addNode("code_generator", CodeGeneratorNode.create())
+                    .addNode("code_quality_check", CodeQualityCheckNode.create())
                     .addNode("project_builder", ProjectBuilderNode.create())
 
                     // 添加边
@@ -42,11 +44,14 @@ public class CodeGenWorkflow {
                     .addEdge("image_collector", "prompt_enhancer")
                     .addEdge("prompt_enhancer", "router")
                     .addEdge("router", "code_generator")
+                    .addEdge("code_generator", "code_quality_check")
                     // 条件边：代码生成后，根据路由判断是否构建项目
-                    .addConditionalEdges("code_generator",
-                            edge_async(this::routeBuildOrSkip),
-                            Map.of("build", "project_builder",
-                                    "skip_build", END
+                    .addConditionalEdges("code_quality_check",
+                            edge_async(this::routeAfterQualityCheck),
+                            Map.of(
+                                    "build", "project_builder",  // 代码质量检查通过，构建项目
+                                    "skip_build", END,                   // 代码质量检查通过但跳过构建（不需要构建）
+                                    "fail", "code_generator"             // 代码质量检查未通过，重新生成代码
                             )
                     )
                     // 项目构建完成后，结束工作流
@@ -169,5 +174,24 @@ public class CodeGenWorkflow {
         // VUE_PROJECT 需要构建
         return "build";
     }
+
+    /**
+     * 路由判断代码质检结果
+     * @param state 当前状态
+     * @return 路由结果
+     */
+    private String routeAfterQualityCheck(MessagesState<String> state) {
+        WorkflowContext context = WorkflowContext.getContext(state);
+        QualityResult qualityResult = context.getQualityResult();
+        // 如果质检失败，重新生成代码
+        if (qualityResult == null || !qualityResult.getIsValid()) {
+            log.error("代码质检失败，需要重新生成代码");
+            return "fail";
+        }
+        // 质检通过，使用原有的构建路由逻辑
+        log.info("代码质检通过，继续后续流程");
+        return routeBuildOrSkip(state);
+    }
+
 
 }

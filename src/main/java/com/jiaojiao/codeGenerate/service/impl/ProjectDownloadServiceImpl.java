@@ -47,9 +47,9 @@ public class ProjectDownloadServiceImpl implements ProjectDownloadService {
     );
     /**
      * 下载项目为压缩包
-     * @param projectPath
-     * @param downloadFileName
-     * @param response
+     * @param projectPath 项目路径
+     * @param downloadFileName 下载文件名
+     * @param response 响应
      */
     @Override
     public void downloadProjectAsZip(String projectPath, String downloadFileName, HttpServletResponse response) {
@@ -79,7 +79,7 @@ public class ProjectDownloadServiceImpl implements ProjectDownloadService {
 
 
     /**
-     * 校验路径是否允许包含再压缩包中
+     * 校验路径是否允许包含在压缩包中
      * @param projectRoot 项目根目录
      * @param fullPath 完整路径
      * @return 是否允许

@@ -24,6 +24,8 @@ import com.jiaojiao.codeGenerate.model.enums.ChatHistoryMessageTypeEnum;
 import com.jiaojiao.codeGenerate.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.codeGenerate.model.vo.AppVO;
 import com.jiaojiao.codeGenerate.model.vo.UserVO;
+import com.jiaojiao.codeGenerate.monitor.MonitorContext;
+import com.jiaojiao.codeGenerate.monitor.MonitorContextHolder;
 import com.jiaojiao.codeGenerate.service.AppService;
 import com.jiaojiao.codeGenerate.service.ChatHistoryService;
 import com.jiaojiao.codeGenerate.service.ScreenshotService;
@@ -33,7 +35,7 @@ import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -54,6 +56,10 @@ import java.util.stream.Collectors;
 @Service
 public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  implements AppService{
     private static final Logger log = LoggerFactory.getLogger(AppServiceImpl.class);
+
+    @Value("${code.deploy-host:http://localhost}")
+    private String deployHost;
+
     @Resource
     private UserService userService;
 
@@ -66,18 +72,25 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
 
-    @Autowired
+    @Resource
     private ChatHistoryService chatHistoryService;
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
 
-    @Autowired
+    @Resource
     private VueProjectBuilder vueProjectBuilder;
 
     @Resource
     private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
+    /**
+     * 应用对话
+     * @param appId 应用ID
+     * @param message 提示词
+     * @param loginUser 登录用户
+     * @return  代码流
+     */
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
         // 1. 参数校验
@@ -100,10 +113,20 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         }
         // 5. 在调用AI前，先保存用户消息到数据库中
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
-        // 6. 调用AI生成代码(流式)
+        // 6. 设置监控上下文
+        // 6. 上下文设置
+        MonitorContextHolder.setContext(MonitorContext.builder()
+                .userId(loginUser.getId().toString())
+                .appId(appId.toString())
+                .build());
+        // 7. 调用AI生成代码(流式)
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
-        // 7. 收集AI响应内容，并且在完成后保存记录到历史对话
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+        // 8. 收集AI响应内容，并且在完成后保存记录到历史对话
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
+                .doFinally(signalType -> {
+                    // 9. 完成后清除监控上下文
+                    MonitorContextHolder.clearContext();
+                });
     }
 
     @Override
@@ -181,9 +204,10 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         updateApp.setDeployedTime(LocalDateTime.now());
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-
-        // 10. 得到可访问的URL地址
-        String appDeployUrl = String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 10. 构建应用访问 URL
+        String appDeployUrl = String.format("%s/%s/", deployHost, deployKey);
+//        // 10. 得到可访问的URL地址 （本地）
+//        String appDeployUrl = String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
         // 11. 异步执行截图服务并更新应用封面
         generateAppScreenshotAsync(appId, appDeployUrl);
         return appDeployUrl;

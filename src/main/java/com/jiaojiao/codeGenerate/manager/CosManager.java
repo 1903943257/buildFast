@@ -13,7 +13,7 @@ import java.io.File;
 /**
  * COS对象存储管理器
  *
- * @author yupi
+ * @author jiaojiao
  */
 @Component
 @Slf4j

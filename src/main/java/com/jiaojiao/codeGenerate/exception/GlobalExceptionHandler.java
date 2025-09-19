@@ -43,7 +43,6 @@ public class GlobalExceptionHandler {
 
     /**
      * 处理SSE请求的错误响应
-     *
      * @param errorCode 错误码
      * @param errorMessage 错误信息
      * @return true表示是SSE请求并已处理，false表示不是SSE请求
