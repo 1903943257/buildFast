@@ -10,8 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
-import java.util.List;
-
 /**
  * 推理模型配置
  */
@@ -49,7 +47,7 @@ public class ReasoningStreamingChatModelConfig {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 // 部署暂时不需要监控
-                .listeners(List.of(aiModelMonitorListener))
+//                .listeners(List.of(aiModelMonitorListener))
                 .build();
     }
 }

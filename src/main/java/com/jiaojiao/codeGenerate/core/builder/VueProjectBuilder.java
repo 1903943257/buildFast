@@ -64,28 +64,48 @@ public class VueProjectBuilder {
     }
 
 
+//    /**
+//     * 执行 npm install 命令
+//     */
+//    private boolean executeNpmInstall(File projectDir) {
+//        log.info("执行 npm install...");
+//        String command = String.format("%s install", buildCommand("npm"));
+//        return executeCommand(projectDir, command, 300); // 5分钟超时
+//    }
+
     /**
-     * 执行 npm install 命令
+     * 执行加强版 npm install 命令
      */
     private boolean executeNpmInstall(File projectDir) {
-        log.info("执行 npm install...");
-        String command = String.format("%s install", buildCommand("npm"));
-        return executeCommand(projectDir, command, 300); // 5分钟超时
+        log.info("执行 npm install...（使用国内源加速）");
+        // 1. 添加淘宝国内源，解决国外源下载慢的问题
+        String npmCommand = buildCommand("npm");
+        String command = String.format("%s install --registry=https://registry.npmmirror.com", npmCommand);
+        // 2. 延长超时时间到10分钟（600秒），应对依赖较多的场景
+        return executeCommand(projectDir, command, 300);
+
     }
 
     /**
-     * 执行 npm run build 命令
+     * 执行增强的 npm run build 命令
      */
+//    private boolean executeNpmBuild(File projectDir) {
+//        log.info("执行 npm run build...");
+//        String command = String.format("%s run build", buildCommand("npm"));
+//
+//        return executeCommand(projectDir, command, 180); // 3分钟超时
+//    }
     private boolean executeNpmBuild(File projectDir) {
         log.info("执行 npm run build...");
-        String command = String.format("%s run build", buildCommand("npm"));
-
-        return executeCommand(projectDir, command, 180); // 3分钟超时
+        String npmCommand = buildCommand("npm");
+        // 可选：添加国内源，避免构建时下载依赖超时
+        String command = String.format("%s run build --registry=https://registry.npmmirror.com", npmCommand);
+        return executeCommand(projectDir, command, 180);
     }
 
     /**
      * 系统检测
-     * @return
+     * @return 是否为Windows系统
      */
     private boolean isWindows() {
         return System.getProperty("os.name").toLowerCase().contains("windows");

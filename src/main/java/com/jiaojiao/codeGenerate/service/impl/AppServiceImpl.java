@@ -24,8 +24,6 @@ import com.jiaojiao.codeGenerate.model.enums.ChatHistoryMessageTypeEnum;
 import com.jiaojiao.codeGenerate.model.enums.CodeGenTypeEnum;
 import com.jiaojiao.codeGenerate.model.vo.AppVO;
 import com.jiaojiao.codeGenerate.model.vo.UserVO;
-import com.jiaojiao.codeGenerate.monitor.MonitorContext;
-import com.jiaojiao.codeGenerate.monitor.MonitorContextHolder;
 import com.jiaojiao.codeGenerate.service.AppService;
 import com.jiaojiao.codeGenerate.service.ChatHistoryService;
 import com.jiaojiao.codeGenerate.service.ScreenshotService;
@@ -114,19 +112,20 @@ public class AppServiceImpl extends ServiceImpl<UserMapper.AppMapper, App>  impl
         // 5. 在调用AI前，先保存用户消息到数据库中
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
         // 6. 设置监控上下文
-        // 6. 上下文设置
-        MonitorContextHolder.setContext(MonitorContext.builder()
-                .userId(loginUser.getId().toString())
-                .appId(appId.toString())
-                .build());
+//        MonitorContextHolder.setContext(
+//                MonitorContext.builder()
+//                        .userId(loginUser.getId().toString())
+//                        .appId(appId.toString())
+//                        .build());
         // 7. 调用AI生成代码(流式)
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 8. 收集AI响应内容，并且在完成后保存记录到历史对话
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
-                .doFinally(signalType -> {
-                    // 9. 完成后清除监控上下文
-                    MonitorContextHolder.clearContext();
-                });
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+//                .doFinally(signalType -> {
+//                    // 9. 完成后清除监控上下文
+////                    MonitorContextHolder.clearContext();
+//                })
+
     }
 
     @Override

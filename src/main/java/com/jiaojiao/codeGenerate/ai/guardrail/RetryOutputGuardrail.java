@@ -4,6 +4,13 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * 重试输出守卫rail
+ * 用于检查 AI 模型的输出是否符合预期，若不符合则要求模型重新生成输出
+ */
+@Slf4j
 public class RetryOutputGuardrail implements OutputGuardrail {
 
     @Override

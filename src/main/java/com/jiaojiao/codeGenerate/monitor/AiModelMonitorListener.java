@@ -13,6 +13,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
+/**
+ * AI模型监控监听器
+ */
 @Component
 @Slf4j
 public class AiModelMonitorListener implements ChatModelListener {
