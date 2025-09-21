@@ -48,9 +48,9 @@ knife4j:
 logging:
   level:
     # 打印 MyBatis-Flex 的 SQL 日志（包含执行时间）
-    com.mybatisflex.core: DEBUG
-    # 打印 Mapper 接口的日志（可选）
-    com.example.mapper: DEBUG
+    com.jiaojiao.codeGenerate.core: DEBUG
+    # 打印 Mapper 接口的日志
+    com.jiaojiao.codeGenerate.mapper: DEBUG
 
 # 监控
 management:
